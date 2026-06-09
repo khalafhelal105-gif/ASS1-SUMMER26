@@ -11,8 +11,8 @@
 const STORAGE_KEY = "ssp_session_v1";
 
 /** -----------------------------
- *  Part A — Safe DOM utilities
- *  -----------------------------
+ * Part A — Safe DOM utilities
+ * -----------------------------
  */
 
 /**
@@ -25,10 +25,11 @@ const STORAGE_KEY = "ssp_session_v1";
  * - use regex, not DOM APIs
  */
 function sanitizeUsername(input) {
-  // TODO: implement
-  return "";
-
+  // 1. Limit to 20 characters
+  let str = input.substring(0, 20);
   
+  // 2. Replace disallowed characters with "_"
+  return str.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
 /**
@@ -40,35 +41,58 @@ function sanitizeUsername(input) {
  * - MUST use textContent (not innerHTML)
  */
 function renderNotifications(listEl, notifications) {
-  // TODO: implement
+  // Clear the existing list safely
+  listEl.textContent = "";
+
+  // Loop through each notification and add it as a new <li> element
+  notifications.forEach((note) => {
+    const li = document.createElement("li");
+    li.textContent = note; // This is secure: prevents XSS
+    listEl.appendChild(li);
+  });
 }
 
 /** -----------------------------
- *  Part B — JSON and parsing
- *  -----------------------------
+ * Part B — JSON and parsing
+ * -----------------------------
  */
 
 /**
  * Parse a JSON string representing a profile.
  * Input example:
- *   {"displayName":"Alice","role":"user","notifications":["Welcome","Update available"]}
+ * {"displayName":"Alice","role":"user","notifications":["Welcome","Update available"]}
  *
  * Requirements:
  * - If jsonText is not valid JSON, return null
  * - If required fields are missing or wrong type, return null
  * - Required fields:
- *   - displayName: string
- *   - role: string ("user" or "admin")
- *   - notifications: array of strings
+ * - displayName: string
+ * - role: string ("user" or "admin")
+ * - notifications: array of strings
  */
 function parseProfileJson(jsonText) {
-  // TODO: implement
+  try {
+    const profile = JSON.parse(jsonText);
+
+    const isValid = 
+      typeof profile.displayName === 'string' &&
+      (profile.role === 'user' || profile.role === 'admin') &&
+      Array.isArray(profile.notifications) &&
+      profile.notifications.every(n => typeof n === 'string');
+
+    if (isValid) {
+      return profile;
+    }
+  } catch (e) {
+    return null;
+  }
+  
   return null;
 }
 
 /** -----------------------------
- *  Part C — Async fetch
- *  -----------------------------
+ * Part C — Async fetch
+ * -----------------------------
  */
 
 /**
@@ -80,26 +104,43 @@ function parseProfileJson(jsonText) {
  * - Return parsed profile object or null
  */
 async function fetchUserProfile(url) {
-  // TODO: implement
-  return null;
+  try {
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      return null;
+    }
+    
+    const text = await response.text();
+    return parseProfileJson(text);
+    
+  } catch (e) {
+    return null;
+  }
 }
-
 /** -----------------------------
- *  Part D — Client-side state (storage)
- *  -----------------------------
+ * Part D — Client-side state (storage)
+ * -----------------------------
  */
 
 /**
  * Save session to localStorage:
  * - Save ONLY non-sensitive info:
- *   { displayName, role }
+ * { displayName, role }
  * Requirements:
  * - Use JSON.stringify
  * - Must NOT store "access granted" flags
  * - Must NOT store notifications (assume those are dynamic)
  */
 function saveSessionToStorage(profile) {
-  // TODO: implement
+  if (!profile) return;
+
+  const session = {
+    displayName: profile.displayName,
+    role: profile.role
+  };
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
 }
 
 /**
@@ -109,13 +150,20 @@ function saveSessionToStorage(profile) {
  * - Return object { displayName, role } if valid
  */
 function loadSessionFromStorage() {
-  // TODO: implement
-  return null;
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    
+    if (!data) return null;
+    
+    return JSON.parse(data);
+  } catch (e) {
+    return null;
+  }
 }
 
 /** -----------------------------
- *  Part E — Access logic (security lesson)
- *  -----------------------------
+ * Part E — Access logic (security lesson)
+ * -----------------------------
  */
 
 /**
@@ -128,13 +176,15 @@ function loadSessionFromStorage() {
  * client-side logic can be manipulated; real authorization is server-side.
  */
 function computeAccessStatus(profile) {
-  // TODO: implement
+  if (profile && profile.role === 'admin') {
+    return "GRANTED";
+  }
   return "DENIED";
 }
 
 /** -----------------------------
- *  Part F — Wiring the UI (events)
- *  -----------------------------
+ * Part F — Wiring the UI (events)
+ * -----------------------------
  */
 
 function setText(id, value) {
@@ -187,11 +237,11 @@ function applyProfileToUI(profile) {
  * Requirements:
  * - Use addEventListener (not inline onclick)
  * - Implement:
- *   - Log In: sanitize username; update displayName; save role as "user"
- *   - Log Out: reset UI to UNDEFINED; clear storage
- *   - Load Profile: fetch profile from /mock/profile.json (simulated in tests)
- *   - Load From Storage: load session and apply minimal profile (no notifications)
- *   - Reset: clear everything and set UNDEFINED
+ * - Log In: sanitize username; update displayName; save role as "user"
+ * - Log Out: reset UI to UNDEFINED; clear storage
+ * - Load Profile: fetch profile from /mock/profile.json (simulated in tests)
+ * - Load From Storage: load session and apply minimal profile (no notifications)
+ * - Reset: clear everything and set UNDEFINED
  */
 function initUI() {
   // If this file is required from Jest tests, document may not exist:
